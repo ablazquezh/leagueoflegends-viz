@@ -53,6 +53,7 @@ patch_id = []
 champion = []
 patch_date = []
 change_description = []
+patch_type = [] # Regular - Hotfix - Undocumented - Champion release
 
 #patch_info = patch_info[patch_info.loc[:, 'Patch Type'] == 'Preseason']
 
@@ -77,6 +78,8 @@ for i in range(len(patch_info)):
     
     patch_id.append(soup.find('h1', {'class': 'page-header__title'}).get_text())
 
+    other_headers = soup.findAll('h2')
+    
 
     date_info = soup.find('td', {'class': 'pi-horizontal-group-item pi-data-value pi-font pi-border-color pi-item-spacing'}).get_text().split(' ')
     patch_date.append(returnDate(date_info))
@@ -87,16 +90,56 @@ for i in range(len(patch_info)):
     
     for idx, j in enumerate(champion_info):
                 
-        champion_name = j.find('span', {'style': 'white-space:normal;'})
+        champion_name_container = j.find('span', {'style': 'white-space:normal;'})
     
-        if champion_name is not None:
-            
-            champion_name = champion_name.get_text()
+        if champion_name_container is not None:
+                   
+            champion_name = champion_name_container.get_text()
             
             if champion_name in champion_names['Champion Name'].tolist():
                 
+                previous_dt = champion_name_container.find_previous('dt')
+                previous_h2 = champion_name_container.find_previous('h2')
+                previous_h3 = champion_name_container.find_previous('h3')
+                
+                if 'New Champion' in previous_dt.get_text():
+                    patch_type.append('New Champion')
+                elif 'Hotfix' in previous_h2.get_text():
+                    patch_type.append('Hotfix')
+                    
+                    if 'Hotfixes' in previous_h2.get_text():
+                        hotfix_date = previous_h3.get_text()
+                        hotfix_date = hotfix_date.split(' ')
+                        
+                        day = hotfix_date[2]
+                        day = re.search('[0-9]*', day).group(0)
+                        if len(day) == 1:
+                            day = '0'+day
+                        
+                        month = month_dict[hotfix_date[1]]
+                        year = patch_date[-1].split('-')[2]
+                        
+                        patch_date.append(day+'-'+month+'-'+year)
+                        
+                    else:
+                        hotfix_date = previous_h2.get_text()
+                        hotfix_date = hotfix_date.split(' ')
+                        
+                        day = hotfix_date[2]
+                        day = re.search('[0-9]*', day).group(0)
+                        
+                        month = month_dict[hotfix_date[1]]
+                        year = patch_date[-1].split('-')[2]
+                        
+                        patch_date.append(day+'-'+month+'-'+year)
+                        
+                elif 'Undocumented Changes' in previous_h2.get_text():
+                    patch_type.append('Undocumented Change')
+                else:
+                    patch_type.append('Regular Patch')
+                
                 if not(len(champion) > 0 and champion_name == champion[len(champion)-1]):
-                # This second condition may need to be checked if 'dl' is weidly nested as in v.5.6 Quinn's case. It will cause to have multiple dls nesting the same 'span', {'style': 'white-space:normal;'}
+                # This second condition may need to be checked if 'dl' is weirdly nested as in v.5.6 Quinn's case. It will cause to have multiple dls nesting the same 'span', {'style': 'white-space:normal;'}
     
                     changes = j.find_next_sibling()
                     if changes == None: # May happen if 'dl' is weidly nested as in v.5.6 Quinn's case
@@ -194,7 +237,10 @@ for i in range(len(patch_info)):
                     if first_added == True and champion_updates_count > 0: 
                         
                         patch_id.append(patch_id[-1])
-                        patch_date.append(patch_date[-1])
+                        
+                        if len(patch_id) != len(patch_date): 
+                        # This implies that the current patch info is not a hotfix, and thus no associated date has been already added
+                            patch_date.append(patch_date[-1])
                         
             
                     #print(champion_updates_count)
@@ -216,7 +262,7 @@ for i in range(len(patch_info)):
 driver.close()
 
 
-patchInfo_detail = pd.DataFrame({'ID': patch_id, 'Champion': champion, 'Date': patch_date, 'Change Description': change_description}) 
+patchInfo_detail = pd.DataFrame({'ID': patch_id, 'Champion': champion, 'Date': patch_date, 'Change Description': change_description, 'Patch Type': patch_type}) 
 
 for path in save_locations:
     
