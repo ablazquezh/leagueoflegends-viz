@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat Apr 11 21:04:28 2020
+Created on Wed Apr 22 09:36:13 2020
 
 @author: Alberto
 """
@@ -25,7 +25,7 @@ month_dict = {'January': '1',
  'December': '12'}
 
 
-save_locations = ['', 'C:\\Users\\Alberto\\Desktop\\UNED\\2O CUATRIMESTRE\\VD\\data\\scrapped\\'] # put other paths if necessary
+save_locations = [''] # put other paths if necessary
 
 
 def formatString(string):
@@ -53,6 +53,10 @@ patch_id = []
 champion = []
 patch_date = []
 change_description = []
+
+#patch_info = patch_info[patch_info.loc[:, 'Patch Type'] == 'Preseason']
+
+patch_info = patch_info.reset_index(drop = True)
 
 for i in range(len(patch_info)):
 
@@ -94,7 +98,6 @@ for i in range(len(patch_info)):
                 if not(len(champion) > 0 and champion_name == champion[len(champion)-1]):
                 # This second condition may need to be checked if 'dl' is weidly nested as in v.5.6 Quinn's case. It will cause to have multiple dls nesting the same 'span', {'style': 'white-space:normal;'}
     
-                
                     changes = j.find_next_sibling()
                     if changes == None: # May happen if 'dl' is weidly nested as in v.5.6 Quinn's case
                         changes = j.find_next('ul')
@@ -123,7 +126,7 @@ for i in range(len(patch_info)):
                         text_cells = text.split('\n')
                         text_cells = [x for x in text_cells if len(x) > 0] # There may be a more elegant way to do this
                         
-                        if len(text_cells) == 2: # This is, just [div, li]
+                        if len(text_cells) == 2: # just [div, li]
                             
                             change_description.append({text_cells[0]: text_cells[1]})
                             champion_updates_count = champion_updates_count +1
@@ -158,21 +161,14 @@ for i in range(len(patch_info)):
                                         champion_updates_count = champion_updates_count +1
                                     
                                     else:
+
+                                        info_set = []
+                                        for cell in np.flip(np.arange(1, len(text_cells))):
                                         
-                                        li_set = []
-                                        coupled = {}
-                                        for cell in np.flip(np.arange(1, len(info_sets_2nd))):
-                                        
-                                            if info_sets_2nd[cell] == 'li':
+                                            info_set.append(text_cells[cell])
+                                            # May decide later on to manage this kind of nesting differently. Current approach is suited to current purposes.
                                             
-                                                li_set.append(text_cells[cell])
-                                            
-                                            elif info_sets_2nd[cell] == 'div':
-                                                
-                                                coupled[text_cells[cell]] = li_set
-                                                li_set = []
-                                                
-                                        change_description.append({text_cells[0]: coupled})
+                                        change_description.append({text_cells[0]: info_set})
                                         champion_updates_count = champion_updates_count +1
     
                                             
@@ -185,9 +181,6 @@ for i in range(len(patch_info)):
                                     change_description.append(item)
                                     champion_updates_count = champion_updates_count +1
     
-    
-                                    
-                                        
                                 #print("*********")
                                 #print(li_idxs)
                                 
@@ -218,24 +211,13 @@ for i in range(len(patch_info)):
                     if champion_updates_count > 0:
                         champion.append(champion_name)
                         first_added = True
-                        
-                    #elif champion_updates_count == 0:
-                    #    patch_id = patch_id[:-1]
-                    #    patch_date = patch_date[:-1]
-                        
-                    
+                                            
 
 driver.close()
+
 
 patchInfo_detail = pd.DataFrame({'ID': patch_id, 'Champion': champion, 'Date': patch_date, 'Change Description': change_description}) 
 
 for path in save_locations:
     
     patchInfo_detail.to_csv(path + 'patchInfo_detail.csv', index=False, sep=',')
-
-
-
-from collections import Counter
-
-Counter(patch_id).keys() # equals to list(set(words))
-Counter(patch_id).values() # counts the elements' frequency
